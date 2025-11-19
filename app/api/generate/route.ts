@@ -59,17 +59,26 @@ export async function POST(request: Request) {
 
     // Step 3: Generate video using Replicate SadTalker
     console.log('Generating video with SadTalker...');
-    const output = await replicate.run(
-      'cjwbw/sadtalker:a519cc0cfebaaeade068b23899165a11ec76aaa1d2b313d40d214f204ec957a3',
-      {
-        input: {
-          driven_audio: audioDataUri,
-          source_image: 'https://i.imgur.com/5vPKgb4.jpg', // Default avatar image
-          pose_style: 0,
-          preprocess: 'crop',
-        },
+    let output;
+    try {
+      output = await replicate.run(
+        'cjwbw/sadtalker:a519cc0cfebaaeade068b23899165a11ec76aaa1d2b313d40d214f204ec957a3',
+        {
+          input: {
+            driven_audio: audioDataUri,
+            source_image: 'https://i.imgur.com/5vPKgb4.jpg', // Default avatar image
+            pose_style: 0,
+            preprocess: 'crop',
+          },
+        }
+      );
+    } catch (replicateError: any) {
+      console.error('Replicate error:', replicateError);
+      if (replicateError.response?.status === 402) {
+        throw new Error('Insufficient Replicate credits. Please add billing at https://replicate.com/account/billing');
       }
-    );
+      throw replicateError;
+    }
 
     const videoUrl = Array.isArray(output) ? output[0] : (output as unknown as string);
     console.log('Video generated:', videoUrl);
