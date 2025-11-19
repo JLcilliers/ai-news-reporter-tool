@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     // Step 3: Generate video using Replicate SadTalker
     console.log('Generating video with SadTalker...');
     const output = await replicate.run(
-      'cjwbw/sadtalker:3aa3dac9353cc4d6bd62a35fa88b22c7d775dfd96f1a2c50c058c21bec1f0f13',
+      'cjwbw/sadtalker:a519cc0cfebaaeade068b23899165a11ec76aaa1d2b313d40d214f204ec957a3',
       {
         input: {
           driven_audio: audioDataUri,
