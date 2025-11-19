@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import Replicate from 'replicate';
 import supabase from '@/lib/supabase';
-import fs from 'fs';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 const openai = new OpenAI({
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
     });
 
     const script = scriptResponse.choices[0].message.content || '';
-    console.log('Script generated:', script);
+    console.log('Script generated:', script.substring(0, 100) + '...');
 
     // Step 2: Generate audio using OpenAI TTS
     console.log('Generating audio...');
@@ -53,15 +51,11 @@ export async function POST(request: Request) {
       input: script,
     });
 
-    // Save audio to temporary file
+    // Convert audio to base64 data URI (avoids file system operations in serverless)
     const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
-    const tempDir = path.join(process.cwd(), 'tmp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-    const audioPath = path.join(tempDir, `audio-${uuidv4()}.mp3`);
-    fs.writeFileSync(audioPath, audioBuffer);
-    console.log('Audio saved:', audioPath);
+    console.log('Audio generated, size:', audioBuffer.length, 'bytes');
+    const audioBase64 = audioBuffer.toString('base64');
+    const audioDataUri = `data:audio/mpeg;base64,${audioBase64}`;
 
     // Step 3: Generate video using Replicate SadTalker
     console.log('Generating video with SadTalker...');
@@ -69,7 +63,7 @@ export async function POST(request: Request) {
       'cjwbw/sadtalker:3aa3dac9353cc4d6bd62a35fa88b22c7d775dfd96f1a2c50c058c21bec1f0f13',
       {
         input: {
-          driven_audio: fs.readFileSync(audioPath, { encoding: 'base64' }),
+          driven_audio: audioDataUri,
           source_image: 'https://i.imgur.com/5vPKgb4.jpg', // Default avatar image
           pose_style: 0,
           preprocess: 'crop',
@@ -122,12 +116,9 @@ export async function POST(request: Request) {
       throw new Error(`Failed to save to database: ${dbError.message}`);
     }
 
-    // Clean up temporary files
-    fs.unlinkSync(audioPath);
-
     return NextResponse.json({ videoUrl: publicUrl });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in generation:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'An error occurred' },
       { status: 500 }
