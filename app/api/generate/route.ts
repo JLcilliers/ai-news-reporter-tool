@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       }
     );
 
-    const videoUrl = output as string;
+    const videoUrl = Array.isArray(output) ? output[0] : (output as unknown as string);
     console.log('Video generated:', videoUrl);
 
     // Step 4: Download and upload video to Supabase
